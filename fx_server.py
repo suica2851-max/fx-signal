@@ -4,7 +4,7 @@ AUD/JPY リアルタイム価格サーバー
 yfinance経由でデータ取得 → ローカルHTMLにCORS対応で提供
 """
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import json, urllib.request, urllib.error
+import json, urllib.request, urllib.error, os
 from datetime import datetime
 
 def get_audjpy():
@@ -47,7 +47,7 @@ class Handler(BaseHTTPRequestHandler):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] {args[0]} {args[1]}")
 
 if __name__ == "__main__":
-    PORT = 8765
+    PORT = int(os.environ.get("PORT", 8765))
     print(f"✅ AUD/JPY サーバー起動 → http://localhost:{PORT}")
     print("停止するには Ctrl+C")
     HTTPServer(("localhost", PORT), Handler).serve_forever()
