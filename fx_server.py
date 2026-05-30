@@ -50,4 +50,4 @@ if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", 8765))
     print(f"✅ AUD/JPY サーバー起動 → http://localhost:{PORT}")
     print("停止するには Ctrl+C")
-    HTTPServer(("localhost", PORT), Handler).serve_forever()
+    HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
