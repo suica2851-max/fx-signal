@@ -971,7 +971,7 @@ function updateUI(price, prev){
 // ========== FETCH ==========
 async function fetchPrice(){
   try {
-    const res = await fetch('https://fx-signal-6nzs.onrender.com');
+    const res = await fetch('/api');
     const data = await res.json();
     if(!data.ok) throw new Error(data.error);
     const price = data.price;

@@ -1,0 +1,42 @@
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import os, json, urllib.request
+
+def get_audjpy():
+    try:
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/AUDJPY=X?interval=1m&range=1d"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read())
+        chart = data["chart"]["result"][0]
+        meta = chart["meta"]
+        closes = chart.get("indicators",{}).get("quote",[{}])[0].get("close",[])
+        closes = [c for c in closes if c is not None]
+        return {"price":round(meta.get("regularMarketPrice",0),3),"prev":round(meta.get("previousClose",0),3),"high":round(meta.get("regularMarketDayHigh",0),3),"low":round(meta.get("regularMarketDayLow",0),3),"closes":[round(c,3) for c in closes[-30:]],"ok":True}
+    except Exception as e:
+        return {"ok":False,"error":str(e)}
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/api":
+            body = json.dumps(get_audjpy()).encode()
+            self.send_response(200)
+            self.send_header("Content-Type","application/json")
+            self.send_header("Access-Control-Allow-Origin","*")
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            try:
+                with open("audjpy-dashboard.html","rb") as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type","text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(body)
+            except:
+                self.send_response(404)
+                self.end_headers()
+    def log_message(self,*args): pass
+
+PORT = int(os.environ.get("PORT", 8765))
+print(f"起動 → port {PORT}")
+HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
