@@ -740,12 +740,12 @@ function updateUI(price, prev){
   const lowBreak  = prevDayLow!==null  && price<prevDayLow;
 
   // Trend stat
-  const tEl = document.getElementById('s-trend');
+  const tEl = document.getElementById('s-trend15');
   tEl.textContent = trend==='down'?'▼ DOWN':trend==='up'?'▲ UP':'— FLAT';
   tEl.style.color = trend==='down'?'var(--red)':trend==='up'?'var(--green)':'var(--yellow)';
 
   // Break stat
-  const bEl = document.getElementById('s-break');
+  const bEl = document.getElementById('s-trend5');
   if(highBreak){ bEl.textContent='▲ 高値更新'; bEl.style.color='var(--green)'; }
   else if(lowBreak){ bEl.textContent='▼ 安値更新'; bEl.style.color='var(--red)'; }
   else { bEl.textContent='— なし'; bEl.style.color='var(--dim2)'; }
