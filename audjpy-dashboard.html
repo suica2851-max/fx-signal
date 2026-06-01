@@ -249,29 +249,7 @@ body::before{content:'';position:fixed;inset:0;background:
   .signal-main{font-size:26px;}
 }
 
-.sig-hist-item{
-  padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;
-}
-.sig-hist-item:last-child{border:none;}
-.sig-hist-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-.sig-hist-dir{font-family:var(--font-display);font-size:14px;letter-spacing:0.05em;}
-.sig-hist-meta{font-size:10px;color:var(--dim2);font-family:var(--font-mono);}
-.sig-hist-detail{display:flex;gap:10px;font-size:10px;color:var(--dim2);margin-bottom:5px;}
-.sig-hist-detail span{color:var(--text);}
-.sig-hist-btns{display:flex;gap:6px;}
-.sig-hist-btn{
-  flex:1;padding:4px 0;border-radius:5px;font-size:10px;cursor:pointer;
-  border:1px solid var(--border2);background:var(--panel2);color:var(--dim2);
-  font-family:var(--font-jp);transition:all 0.15s;
-}
-.sig-hist-btn:hover{border-color:var(--cyan);color:var(--cyan);}
-.sig-hist-btn.win{background:rgba(0,255,136,0.1);border-color:var(--green);color:var(--green);}
-.sig-hist-btn.lose{background:rgba(255,45,85,0.1);border-color:var(--red);color:var(--red);}
-.sig-hist-btn.skip{background:rgba(255,214,10,0.07);border-color:var(--yellow);color:var(--yellow);}
-.sig-hist-result{font-size:10px;padding:2px 10px;border-radius:4px;letter-spacing:0.05em;}
-.sig-hist-result.w{background:rgba(0,255,136,0.12);color:var(--green);}
-.sig-hist-result.l{background:rgba(255,45,85,0.12);color:var(--red);}
-.sig-hist-result.s{background:rgba(255,214,10,0.1);color:var(--yellow);}
+/* Scrollbar */
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
@@ -347,29 +325,20 @@ body::before{content:'';position:fixed;inset:0;background:
       </div>
       <div class="stat-item">
         <div class="stat-lbl">15分足トレンド</div>
-        <div class="stat-val" id="s-trend15" style="color:var(--dim2)">--</div>
+        <div class="stat-val" id="s-trend" style="color:var(--dim2)">--</div>
       </div>
       <div class="stat-item">
-        <div class="stat-lbl">5分足トレンド</div>
-        <div class="stat-val" id="s-trend5" style="color:var(--dim2)">--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-lbl">RSI (5分足)</div>
-        <div class="stat-val" id="s-rsi" style="color:var(--dim2)">--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-lbl">ボリンジャーバンド</div>
-        <div class="stat-val" id="s-bb" style="color:var(--dim2)">--</div>
+        <div class="stat-lbl">高値/安値更新</div>
+        <div class="stat-val" id="s-break" style="color:var(--dim2)">--</div>
       </div>
     </div>
 
     <!-- Conditions -->
     <div class="card" style="margin-bottom:10px;">
       <div class="sec-title">// エントリー条件</div>
-      <div class="cond-row"><span class="cond-lbl">15分足トレンド方向</span><span class="badge ng" id="c1">NG</span></div>
-      <div class="cond-row"><span class="cond-lbl" id="c2-lbl">RSI（売買過熱）</span><span class="badge ng" id="c2">NG</span></div>
-      <div class="cond-row"><span class="cond-lbl" id="c3-lbl">ボリンジャーバンド</span><span class="badge ng" id="c3">NG</span></div>
-      <div class="cond-row"><span class="cond-lbl">時間帯</span><span class="badge ng" id="c4">NG</span></div>
+      <div class="cond-row"><span class="cond-lbl" id="c1-lbl">トレンド方向</span><span class="badge ng" id="c1">NG</span></div>
+      <div class="cond-row"><span class="cond-lbl" id="c2-lbl">価格ブレイク</span><span class="badge ng" id="c2">NG</span></div>
+      <div class="cond-row"><span class="cond-lbl">時間帯</span><span class="badge ng" id="c3">NG</span></div>
     </div>
 
     <!-- Range bar (range mode only) -->
@@ -407,13 +376,6 @@ body::before{content:'';position:fixed;inset:0;background:
         <div class="level-lbl">利確 +15p</div>
         <div class="level-val" id="lv-t" style="color:var(--green)">--</div>
       </div>
-    </div>
-
-    <!-- Signal History -->
-    <div class="card" style="margin-bottom:10px;" id="sig-history-card">
-      <div class="sec-title">// シグナル履歴</div>
-      <div id="sig-history-list" style="max-height:200px;overflow-y:auto;"></div>
-      <div id="sig-history-empty" style="font-size:11px;color:var(--dim2);text-align:center;padding:12px 0;">まだシグナルはありません</div>
     </div>
 
     <!-- Trade Record -->
@@ -468,70 +430,6 @@ let logs = [];
 let lastSigTime = 0;
 let fetchCount = 0;
 let trades = JSON.parse(localStorage.getItem('trades') || '[]');
-let sigHistory = JSON.parse(localStorage.getItem('sigHistory') || '[]');
-
-function saveSigHistory(){ localStorage.setItem('sigHistory', JSON.stringify(sigHistory)); }
-
-function addSigHistory(type, price, mode){
-  const d = new Date();
-  const id = Date.now();
-  sigHistory.unshift({
-    id,
-    type,   // 'sell' | 'buy'
-    price,
-    mode,   // 'トレンド' | 'レンジ'
-    time: d.toLocaleTimeString('ja-JP',{hour12:false,hour:'2-digit',minute:'2-digit'}),
-    date: `${d.getMonth()+1}/${d.getDate()}`,
-    result: null  // null | 'win' | 'lose' | 'skip'
-  });
-  if(sigHistory.length > 30) sigHistory.pop();
-  saveSigHistory();
-  renderSigHistory();
-}
-
-function setSigResult(id, result){
-  const item = sigHistory.find(s=>s.id===id);
-  if(!item) return;
-  item.result = result;
-  saveSigHistory();
-  renderSigHistory();
-  // トレード記録にも自動反映
-  if(result === 'win' || result === 'lose') addTrade(result, false);
-}
-
-function renderSigHistory(){
-  const list = document.getElementById('sig-history-list');
-  const empty = document.getElementById('sig-history-empty');
-  if(!sigHistory.length){ list.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display='none';
-  list.innerHTML = sigHistory.map(s => {
-    const isSell = s.type==='sell';
-    const dirColor = isSell ? 'var(--red)' : 'var(--green)';
-    const dirText = isSell ? '▼ SELL' : '▲ BUY';
-    const slPrice = isSell ? (s.price+0.05).toFixed(3) : (s.price-0.05).toFixed(3);
-    const tpPrice = isSell ? (s.price-0.15).toFixed(3) : (s.price+0.15).toFixed(3);
-    const resultHTML = s.result
-      ? `<span class="sig-hist-result ${s.result==='win'?'w':s.result==='lose'?'l':'s'}">${s.result==='win'?'✓ 利確+15p':s.result==='lose'?'✗ 損切-5p':'— スキップ'}</span>`
-      : `<div class="sig-hist-btns">
-          <button class="sig-hist-btn win" onclick="setSigResult(${s.id},'win')">✓ 利確</button>
-          <button class="sig-hist-btn lose" onclick="setSigResult(${s.id},'lose')">✗ 損切</button>
-          <button class="sig-hist-btn skip" onclick="setSigResult(${s.id},'skip')">— 見送</button>
-        </div>`;
-    return `<div class="sig-hist-item">
-      <div class="sig-hist-top">
-        <span class="sig-hist-dir" style="color:${dirColor}">${dirText}</span>
-        <span class="sig-hist-meta">${s.date} ${s.time} / ${s.mode}</span>
-      </div>
-      <div class="sig-hist-detail">
-        <span>エントリー <span>${s.price.toFixed(3)}</span></span>
-        <span>SL <span style="color:var(--red)">${slPrice}</span></span>
-        <span>TP <span style="color:var(--green)">${tpPrice}</span></span>
-      </div>
-      ${resultHTML}
-    </div>`;
-  }).join('');
-}
-renderSigHistory();
 
 const SL = 0.05, TP = 0.15;
 const TREND_TH = 0.08, RANGE_TH = 0.20;
@@ -596,6 +494,30 @@ function buildReports(){
       title:`豪ドル円 本日の見通し`,
       url:`https://fx.minkabu.jp/pair/AUDJPY`,
       desc:'チャート・ピポット・予想レンジ'
+    },
+    {
+      src:'ヒロセ通商',
+      title:`豪ドル円 マーケット情報`,
+      url:`https://hirose-fx.co.jp/market/`,
+      desc:'テクニカル・ファンダメンタル分析'
+    },
+    {
+      src:'外為どっとコム',
+      title:`豪ドル円 マーケット分析`,
+      url:`https://www.gaitame.com/market/`,
+      desc:'チャート・注目ポイント・注文状況'
+    },
+    {
+      src:'SBI FXトレード',
+      title:`AUD/JPY マーケット情報`,
+      url:`https://www.sbifxt.co.jp/market/`,
+      desc:'ストラテジスト分析・チャート'
+    },
+    {
+      src:'マネックス証券',
+      title:`豪ドル円 デイリーレポート`,
+      url:`https://www.monex.co.jp/market/fx/`,
+      desc:'日次レポート・為替見通し'
     },
   ];
   const el = document.getElementById('report-links');
@@ -670,44 +592,10 @@ buildIndicators();
 // ========== AI SUMMARY ==========
 async function buildAISummary(){
   const el = document.getElementById('ai-summary');
-  el.innerHTML = '<span style="color:var(--dim2)">AIが分析中...</span>';
-  const d = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  const ymd = `${d.getFullYear()}_${pad(d.getMonth()+1)}_${pad(d.getDate())}`;
-  const today = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
-  const oandaUrl = `https://www.oanda.jp/lab-education/market_news/${ymd}_audjpy/`;
+  const today = new Date().toLocaleDateString('ja-JP');
 
-  // OANDAレポートを取得試行
-  let reportText = '';
-  try {
-    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(oandaUrl)}`;
-    const r = await fetch(proxy);
-    const j = await r.json();
-    if(j.contents){
-      // タグ除去して本文抽出
-      reportText = j.contents.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').substring(0,2000);
-    }
-  } catch(e){}
-
-  const prompt = `今日は${today}です。豪ドル円スキャルピングトレーダー向けの朝のブリーフィングを書いてください。
-
-${reportText ? `以下はOANDAの本日レポートです（参考）：\n${reportText}\n\n` : ''}
-
-以下の構成で、合計250〜350文字程度で書いてください：
-
-【昨日の振り返り】
-昨日の豪ドル円の動きを1〜2文で簡潔に。
-
-【本日の注目ポイント】
-本日発表予定の経済指標（豪州CPI、米PCEデフレーター、米GDPなど）とその影響を2〜3文で。
-
-【スキャルパーへの一言】
-今日のトレードで特に意識すべきことを1文で。
-
-重要な専門用語（CPI、RBA、リスクオフ、レジスタンス等）は必ず以下のHTMLで囲んでください：
-<span class="term">用語<span class="tooltip">わかりやすい解説（30文字以内）</span></span>
-
-日本語のみ。マークダウン記号（**等）は使わず、見出しは【】で表現してください。`;
+  // Build context from indicators
+  const context = `今日は${today}。豪ドル円スキャルピングトレーダー向けに、本日の注目点を3〜4文で要約してください。豪州CPI、米PCEデフレーター、米GDPが本日発表予定。重要用語は<span class="term">用語名<span class="tooltip">解説</span></span>の形式でHTMLを含めてください（CPI、RBA、リスクオフ、スキャルピングなど）。日本語で、スキャルパー目線で実践的に。`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -715,32 +603,31 @@ ${reportText ? `以下はOANDAの本日レポートです（参考）：\n${repo
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         model:'claude-sonnet-4-20250514',
-        max_tokens:600,
-        system:'あなたは豪ドル円専門のFXアナリストです。スキャルピングトレーダー向けに実践的・簡潔に解説します。必ず指定されたHTML形式でtooltipを付けてください。マークダウン記号は一切使わないでください。',
-        messages:[{role:'user',content:prompt}]
+        max_tokens:400,
+        system:'あなたは豪ドル円専門のFXアナリストです。スキャルピングトレーダー向けに簡潔・実践的に解説します。HTMLタグを使って用語にtooltipを付けてください。',
+        messages:[{role:'user',content:context}]
       })
     });
     const data = await res.json();
     const text = data.content?.[0]?.text || '取得できませんでした。';
-    el.innerHTML = text.replace(/\n/g,'<br>');
+    el.innerHTML = text;
+    // Re-attach tooltip listeners
+    el.querySelectorAll('.term').forEach(t=>{
+      t.addEventListener('click',e=>{e.stopPropagation();t.classList.toggle('open');});
+    });
   } catch(e) {
-    el.innerHTML = `【昨日の振り返り】<br>豪ドル円は<span class="term">リスクオフ<span class="tooltip">投資家がリスク回避に動く状態。円高になりやすい。</span></span>の動きが続き、軟調な展開でした。<br><br>【本日の注目ポイント】<br><span class="term">豪州CPI<span class="tooltip">消費者物価指数。RBAの政策判断に直結する重要指標。</span></span>と米<span class="term">PCEデフレーター<span class="tooltip">FRBが最重視するインフレ指標。</span></span>・米GDPが発表予定。高インパクト指標が重なるため、発表前後30分はトレードを控えることを推奨します。<br><br>【スキャルパーへの一言】<br>指標ラッシュの日は無理せず、東京時間に絞って少数精鋭のトレードを心がけましょう。`;
+    el.innerHTML = `本日は<span class="term">豪州CPI<span class="tooltip">消費者物価指数。物価の上昇率を示す。RBAの政策判断に直結する重要指標。</span></span>と米<span class="term">PCEデフレーター<span class="tooltip">FRBが最重視するインフレ指標。数値次第でドル相場が大きく動く。</span></span>・米GDPが発表予定。<span class="term">高インパクト指標<span class="tooltip">発表後に相場が急変動しやすい経済指標。スキャルピングでは指標前後の30分は特に注意が必要。</span></span>が重なる日は指標前後のエントリーを控えることを推奨します。`;
+    el.querySelectorAll('.term').forEach(t=>{
+      t.addEventListener('click',e=>{e.stopPropagation();t.classList.toggle('open');});
+    });
   }
-
-  // Tooltip listeners再設定
-  el.querySelectorAll('.term').forEach(t=>{
-    t.addEventListener('click',e=>{e.stopPropagation();t.classList.toggle('open');});
-  });
-  document.addEventListener('click',()=>{
-    document.querySelectorAll('.term.open').forEach(t=>t.classList.remove('open'));
-  });
 }
 buildAISummary();
 
 // ========== TRADE RECORD ==========
 function saveTrades(){ localStorage.setItem('trades', JSON.stringify(trades)); }
 
-function addTrade(result, log=true){
+function addTrade(result){
   const now = new Date();
   trades.unshift({
     t: now.toLocaleTimeString('ja-JP',{hour12:false,hour:'2-digit',minute:'2-digit'}),
@@ -750,7 +637,7 @@ function addTrade(result, log=true){
   if(trades.length > 50) trades.pop();
   saveTrades();
   renderTrades();
-  if(log) addLog(result==='win' ? '✓ 利確 +15p 記録' : '✗ 損切り -5p 記録', result==='win'?'s':'b');
+  addLog(result==='win' ? '✓ 利確 +15p 記録' : '✗ 損切り -5p 記録', result==='win'?'s':'b');
 }
 
 function clearTrades(){
@@ -775,27 +662,32 @@ function renderTrades(){
 }
 renderTrades();
 
-// ========== NOTIFICATIONS ==========
-async function requestNotifPerm(){
-  if('Notification' in window && Notification.permission === 'default'){
-    await Notification.requestPermission();
-  }
+// ========== ANALYSIS ==========
+function getTrend(){
+  if(prices.length<6) return 'unknown';
+  const sl = prices.slice(-14);
+  const diff = sl[sl.length-1].price - sl[0].price;
+  if(diff < -TREND_TH) return 'down';
+  if(diff >  TREND_TH) return 'up';
+  return 'flat';
 }
-requestNotifPerm();
 
-function sendNotif(title, body){
-  if('Notification' in window && Notification.permission === 'granted'){
-    const n = new Notification(title, {
-      body,
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="%23040407"/><text y="22" x="4" font-size="18" fill="%2300e5ff">AU</text></svg>',
-      tag: 'audjpy-signal',
-      renotify: true,
-    });
-    setTimeout(()=>n.close(), 8000);
-  }
+function getMarket(){
+  if(prices.length<8) return 'unknown';
+  const sl = prices.slice(-20);
+  const hi = Math.max(...sl.map(p=>p.price));
+  const lo = Math.min(...sl.map(p=>p.price));
+  const t = getTrend();
+  if(t!=='flat' && (hi-lo)>RANGE_TH) return 'trend';
+  if((hi-lo)<=RANGE_TH) return 'range';
+  return 'trend';
 }
-function getTrend(){ return 'unknown'; } // legacy - not used
-function getMarket(){ return 'unknown'; } // legacy - not used
+
+function getRangeHL(){
+  if(prices.length<8) return {hi:null,lo:null};
+  const sl = prices.slice(-20);
+  return {hi:Math.max(...sl.map(p=>p.price)),lo:Math.min(...sl.map(p=>p.price))};
+}
 
 function isSession(){
   const h = new Date().getHours();
@@ -803,214 +695,13 @@ function isSession(){
 }
 
 // ========== UI UPDATE ==========
-function setCond(id,ok){
+function setCond(id,ok,lbl){
   const el = document.getElementById(id);
   el.textContent = ok?'OK':'NG';
   el.className = 'badge '+(ok?'ok':'ng');
 }
 
-function updateUI(price, prev, data){
-  const ch = price - prev;
-  const p = Math.round(ch*100);
-  const dir = p>0?'up':p<0?'down':'flat';
-
-  // Header + price
-  const hp = document.getElementById('h-price');
-  hp.textContent = fmt(price); hp.className = 'header-price '+dir;
-  const bp = document.getElementById('price-big');
-  bp.textContent = fmt(price); bp.className = 'price-big '+dir;
-  const chEl = document.getElementById('p-change');
-  chEl.textContent = (p>=0?'+':'')+p+'p';
-  chEl.style.color = p>0?'var(--green)':p<0?'var(--red)':'var(--text)';
-  document.getElementById('p-update').textContent = nowStr();
-  document.getElementById('s-high').textContent = fmt(dayHigh);
-  document.getElementById('s-low').textContent = fmt(dayLow);
-
-  const trend15 = data.trend15 || 'unknown';
-  const trend5  = data.trend5  || 'unknown';
-  const rsi     = data.rsi5;
-  const bbU     = data.bb_upper;
-  const bbL     = data.bb_lower;
-  const sess    = isSession();
-
-  // 15分足トレンド
-  const t15El = document.getElementById('s-trend15');
-  t15El.textContent = trend15==='down'?'▼ DOWN':trend15==='up'?'▲ UP':'— FLAT';
-  t15El.style.color = trend15==='down'?'var(--red)':trend15==='up'?'var(--green)':'var(--yellow)';
-
-  // 5分足トレンド
-  const t5El = document.getElementById('s-trend5');
-  t5El.textContent = trend5==='down'?'▼ DOWN':trend5==='up'?'▲ UP':'— FLAT';
-  t5El.style.color = trend5==='down'?'var(--red)':trend5==='up'?'var(--green)':'var(--yellow)';
-
-  // RSI
-  const rsiEl = document.getElementById('s-rsi');
-  if(rsi!==null&&rsi!==undefined){
-    rsiEl.textContent = rsi;
-    rsiEl.style.color = rsi>=70?'var(--red)':rsi<=30?'var(--green)':'var(--text)';
-  }
-
-  // BB
-  const bbEl = document.getElementById('s-bb');
-  const bbUpperTouch = bbU && price >= bbU * 0.9998;
-  const bbLowerTouch = bbL && price <= bbL * 1.0002;
-  if(bbU&&bbL){
-    if(bbUpperTouch){ bbEl.textContent='上限タッチ'; bbEl.style.color='var(--red)'; }
-    else if(bbLowerTouch){ bbEl.textContent='下限タッチ'; bbEl.style.color='var(--green)'; }
-    else { bbEl.textContent='中央帯'; bbEl.style.color='var(--dim2)'; }
-  }
-
-  // 相場モード判定（BBバンド幅＋15分足）
-  let market = 'unknown';
-  if(bbU&&bbL){
-    const bbWidth = bbU - bbL;
-    if(bbWidth < 0.15) market = 'range';
-    else if(trend15==='down') market = 'trend-down';
-    else if(trend15==='up')   market = 'trend-up';
-    else market = 'range';
-  }
-
-  const mb = document.getElementById('mode-bar');
-  const mt = document.getElementById('mode-text');
-  const ms = document.getElementById('mode-sub');
-  const rc = document.getElementById('range-card');
-
-  if(market==='trend-down'){
-    mb.className='mode-bar trend-down'; mt.textContent='▼ DOWN TREND'; ms.textContent='順張り売りモード';
-    rc.style.display='none';
-  } else if(market==='trend-up'){
-    mb.className='mode-bar trend-up'; mt.textContent='▲ UP TREND'; ms.textContent='順張り買いモード';
-    rc.style.display='none';
-  } else if(market==='range'){
-    mb.className='mode-bar range'; mt.textContent='↔ RANGE'; ms.textContent='逆張りモード';
-    rc.style.display='block';
-    if(bbU&&bbL){
-      const pct=Math.max(0,Math.min(1,(price-bbL)/(bbU-bbL)));
-      const ptr=document.getElementById('r-ptr');
-      ptr.style.left=(pct*100)+'%';
-      ptr.style.background=pct>0.7?'var(--red)':pct<0.3?'var(--green)':'var(--cyan)';
-      document.getElementById('r-hi').textContent=fmt(bbU);
-      document.getElementById('r-lo').textContent=fmt(bbL);
-    }
-  } else {
-    mb.className='mode-bar unknown'; mt.textContent='— 相場判定中'; ms.textContent='';
-    rc.style.display='none';
-  }
-
-  // シグナル判定
-  const rsiOversold   = rsi!==null && rsi<=30;
-  const rsiOverbought = rsi!==null && rsi>=70;
-  let sigType = null;
-
-  if(market==='trend-down'){
-    const c1ok=trend15==='down', c2ok=rsiOverbought, c3ok=bbUpperTouch, c4ok=sess;
-    setCond('c1',c1ok);
-    document.getElementById('c2-lbl').textContent=`RSI ${rsi!==null?rsi:'--'}（70以上で売り）`;
-    setCond('c2',c2ok);
-    document.getElementById('c3-lbl').textContent='BB上限タッチ';
-    setCond('c3',c3ok); setCond('c4',c4ok);
-    if(c1ok&&c2ok&&c3ok&&c4ok) sigType='sell';
-
-  } else if(market==='trend-up'){
-    const c1ok=trend15==='up', c2ok=rsiOversold, c3ok=bbLowerTouch, c4ok=sess;
-    setCond('c1',c1ok);
-    document.getElementById('c2-lbl').textContent=`RSI ${rsi!==null?rsi:'--'}（30以下で買い）`;
-    setCond('c2',c2ok);
-    document.getElementById('c3-lbl').textContent='BB下限タッチ';
-    setCond('c3',c3ok); setCond('c4',c4ok);
-    if(c1ok&&c2ok&&c3ok&&c4ok) sigType='buy';
-
-  } else if(market==='range'){
-    if(bbUpperTouch){
-      setCond('c1',true);
-      document.getElementById('c2-lbl').textContent=`RSI ${rsi!==null?rsi:'--'}（70以上で売り）`;
-      setCond('c2',rsiOverbought);
-      document.getElementById('c3-lbl').textContent='BB上限タッチ';
-      setCond('c3',true); setCond('c4',sess);
-      if(sess) sigType='sell';
-    } else if(bbLowerTouch){
-      setCond('c1',true);
-      document.getElementById('c2-lbl').textContent=`RSI ${rsi!==null?rsi:'--'}（30以下で買い）`;
-      setCond('c2',rsiOversold);
-      document.getElementById('c3-lbl').textContent='BB下限タッチ';
-      setCond('c3',true); setCond('c4',sess);
-      if(sess) sigType='buy';
-    } else {
-      setCond('c1',false); setCond('c2',false); setCond('c3',false); setCond('c4',sess);
-    }
-  } else {
-    setCond('c1',false); setCond('c2',false); setCond('c3',false); setCond('c4',sess);
-  }
-
-  const sb=document.getElementById('sig-box');
-  const sm=document.getElementById('sig-main');
-  const ss=document.getElementById('sig-sub');
-  const st=document.getElementById('sig-tag');
-  const lr=document.getElementById('lvl-row');
-
-  if(sigType==='sell'){
-    sb.className='signal-box sell'; sm.textContent='▼ SELL ENTRY'; sm.style.color='var(--red)';
-    ss.textContent=`@ ${fmt(price)}  SL: ${fmt(price+SL)}  TP: ${fmt(price-TP)}`;
-    st.textContent='// SIGNAL — 売りエントリー'; lr.style.display='grid';
-    document.getElementById('lv-e').textContent=fmt(price);
-    document.getElementById('lv-s').textContent=fmt(price+SL);
-    document.getElementById('lv-t').textContent=fmt(price-TP);
-    const now=Date.now();
-    if(now-lastSigTime>60000){
-      addLog(`▼ SELL @ ${fmt(price)} RSI:${rsi}`,'s');
-      sendNotif('▼ SELL ENTRY — KOTAX',`@ ${fmt(price)}  SL:${fmt(price+SL)}  TP:${fmt(price-TP)}`);
-      addSigHistory('sell',price,market==='range'?'レンジ':'トレンド');
-      lastSigTime=now;
-    }
-  } else if(sigType==='buy'){
-    sb.className='signal-box buy'; sm.textContent='▲ BUY ENTRY'; sm.style.color='var(--green)';
-    ss.textContent=`@ ${fmt(price)}  SL: ${fmt(price-SL)}  TP: ${fmt(price+TP)}`;
-    st.textContent='// SIGNAL — 買いエントリー'; lr.style.display='grid';
-    document.getElementById('lv-e').textContent=fmt(price);
-    document.getElementById('lv-s').textContent=fmt(price-SL);
-    document.getElementById('lv-t').textContent=fmt(price+TP);
-    const now=Date.now();
-    if(now-lastSigTime>60000){
-      addLog(`▲ BUY @ ${fmt(price)} RSI:${rsi}`,'b');
-      sendNotif('▲ BUY ENTRY — KOTAX',`@ ${fmt(price)}  SL:${fmt(price-SL)}  TP:${fmt(price+TP)}`);
-      addSigHistory('buy',price,market==='range'?'レンジ':'トレンド');
-      lastSigTime=now;
-    }
-  } else {
-    const cnt=[trend15!=='flat'&&trend15!=='unknown',rsiOversold||rsiOverbought,bbUpperTouch||bbLowerTouch].filter(Boolean).length;
-    if(cnt>=2&&sess){
-      sb.className='signal-box approaching'; sm.textContent='APPROACHING'; sm.style.color='var(--yellow)';
-      ss.textContent=`条件 ${cnt}/3 成立 — 監視継続`; st.textContent='// SIGNAL';
-    } else {
-      sb.className='signal-box standby'; sm.textContent='STANDBY'; sm.style.color='var(--dim2)';
-      ss.textContent='条件成立待ち'; st.textContent='// SIGNAL';
-    }
-    lr.style.display='none';
-  }
-  if(fetchCount%5===0) addLog(`更新 ${fmt(price)} RSI:${rsi} BB:${bbU?fmt(bbU):'--'}`);
-}
-
-// ========== FETCH ==========
-async function fetchPrice(){
-  try {
-    const res = await fetch('/api');
-    const data = await res.json();
-    if(!data.ok) throw new Error(data.error);
-    const price = data.price;
-    const prev = prices.length>0 ? prices[prices.length-1].price : price;
-    prices.push({time:Date.now(),price});
-    if(prices.length>200) prices.shift();
-    if(data.high>0) dayHigh=data.high;
-    if(data.low>0)  dayLow=data.low;
-    if(dayHigh===null||price>dayHigh){prevDayHigh=dayHigh;dayHigh=price;}
-    if(dayLow===null||price<dayLow){prevDayLow=dayLow;dayLow=price;}
-    fetchCount++;
-    updateUI(price, prev, data);
-  } catch(e){
-    addLog('エラー: '+e.message,'w');
-    document.getElementById('price-big').textContent='接続待ち...';
-  }
-}
+function updateUI(price, prev){
   const ch = price - prev;
   const p = Math.round(ch*100);
   const dir = p>0?'up':p<0?'down':'flat';
@@ -1119,12 +810,7 @@ async function fetchPrice(){
     document.getElementById('lv-s').textContent=fmt(price+SL);
     document.getElementById('lv-t').textContent=fmt(price-TP);
     const now = Date.now();
-    if(now-lastSigTime>60000){
-      addLog(`▼ SELL @ ${fmt(price)}`,'s');
-      sendNotif('▼ SELL ENTRY — AUD/JPY', `エントリー: ${fmt(price)}  SL: ${fmt(price+SL)}  TP: ${fmt(price-TP)}`);
-      addSigHistory('sell', price, market==='range'?'レンジ':'トレンド');
-      lastSigTime=now;
-    }
+    if(now-lastSigTime>60000){ addLog(`▼ SELL @ ${fmt(price)}`,'s'); lastSigTime=now; }
   } else if(sigType==='buy'){
     sb.className='signal-box buy'; sm.textContent='▲ BUY ENTRY'; sm.style.color='var(--green)';
     ss.textContent=`@ ${fmt(price)}  SL: ${fmt(price-SL)}  TP: ${fmt(price+TP)}`;
@@ -1134,12 +820,7 @@ async function fetchPrice(){
     document.getElementById('lv-s').textContent=fmt(price-SL);
     document.getElementById('lv-t').textContent=fmt(price+TP);
     const now = Date.now();
-    if(now-lastSigTime>60000){
-      addLog(`▲ BUY @ ${fmt(price)}`,'b');
-      sendNotif('▲ BUY ENTRY — AUD/JPY', `エントリー: ${fmt(price)}  SL: ${fmt(price-SL)}  TP: ${fmt(price+TP)}`);
-      addSigHistory('buy', price, market==='range'?'レンジ':'トレンド');
-      lastSigTime=now;
-    }
+    if(now-lastSigTime>60000){ addLog(`▲ BUY @ ${fmt(price)}`,'b'); lastSigTime=now; }
   } else {
     const partial = [trend!=='flat', highBreak||lowBreak].filter(Boolean).length;
     if(partial>=1&&sess){
