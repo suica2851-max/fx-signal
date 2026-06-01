@@ -710,7 +710,8 @@ function setCond(id,ok,lbl){
   el.className = 'badge '+(ok?'ok':'ng');
 }
 
-function updateUI(price, prev){
+function updateUI(price, prev, data){
+  if(!data) data={};
   const ch = price - prev;
   const p = Math.round(ch*100);
   const dir = p>0?'up':p<0?'down':'flat';
@@ -867,7 +868,7 @@ async function fetchPrice(){
       if(prices.length>200) prices.splice(200);
     }
     fetchCount++;
-    updateUI(price,prev);
+    updateUI(price, prev, data);
   } catch(e){
     addLog('サーバー未起動? '+e.message,'w');
     document.getElementById('price-big').textContent='サーバー起動待ち';
