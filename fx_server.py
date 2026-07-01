@@ -32,6 +32,18 @@ def get_audjpy():
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == "/api/market-analysis":
+            try:
+                result = run_full_analysis()
+                body = json.dumps(result, ensure_ascii=False).encode()
+            except Exception as e:
+                body = json.dumps({"error": str(e)}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == "/api":
             body = json.dumps(get_audjpy()).encode()
             self.send_response(200)
