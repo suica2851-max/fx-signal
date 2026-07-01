@@ -1,176 +1,94 @@
 import os
 import json
+import urllib.request
 from datetime import datetime
-import pandas as pd
-import yfinance as yf
 from anthropic import Anthropic
 
-TICKERS = {
-    "audjpy": "AUDJPY=X",
-    "usdjpy": "JPY=X",
-    "wti": "CL=F",
-    "sp500": "^GSPC",
-    "gold": "GC=F",
-    "bhp": "BHP.AX",
-    "au_bond": "^GACGB10",
-    "jp_bond": "^JGB",
-}
-EMA_FAST = 20
-EMA_SLOW = 50
 client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
-def _fetch(ticker, period, interval):
-    df = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df
+def fetch_price(symbol, period="4mo", interval="1d"):
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range={period}"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        data = json.loads(r.read())
+    closes = data["chart"]["result"][0]["indicators"]["quote"][0]["close"]
+    return [c for c in closes if c is not None]
 
-def _add_ema(df):
-    df = df.copy()
-    close = df["Close"].squeeze()
-    df["ema_fast"] = close.ewm(span=EMA_FAST, adjust=False).mean()
-    df["ema_slow"] = close.ewm(span=EMA_SLOW, adjust=False).mean()
-    return df
+def calc_ema(closes, span):
+    k = 2 / (span + 1)
+    ema = closes[0]
+    for c in closes[1:]:
+        ema = c * k + ema * (1 - k)
+    return round(ema, 3)
 
-def _classify_trend(df):
-    last = df.iloc[-1]
-    prev = df.iloc[-5] if len(df) >= 5 else df.iloc[0]
-    fast_now = float(last["ema_fast"])
-    slow_now = float(last["ema_slow"])
-    fast_prev = float(prev["ema_fast"])
-    ema_gap_pct = abs(fast_now - slow_now) / slow_now * 100
-    slope = fast_now - fast_prev
-    if fast_now > slow_now and slope > 0 and ema_gap_pct > 0.05:
+def classify_trend(closes):
+    ema20 = calc_ema(closes, 20)
+    ema50 = calc_ema(closes, 50)
+    slope = calc_ema(closes[-5:], 3) - calc_ema(closes[-10:-5], 3)
+    if ema20 > ema50 and slope > 0:
         direction = "上昇"
-    elif fast_now < slow_now and slope < 0 and ema_gap_pct > 0.05:
+    elif ema20 < ema50 and slope < 0:
         direction = "下降"
     else:
         direction = "レンジ"
-    price = float(df["Close"].squeeze().iloc[-1])
-    return {"direction": direction, "price": round(price, 3),
-            "ema_fast": round(fast_now, 3), "ema_slow": round(slow_now, 3)}
+    return {"direction": direction, "price": round(closes[-1], 3),
+            "ema20": ema20, "ema50": ema50}
 
-def get_daily_trend():
-    df = _fetch(TICKERS["audjpy"], "4mo", "1d")
-    return _classify_trend(_add_ema(df))
+def get_change_pct(symbol):
+    try:
+        closes = fetch_price(symbol, "5d", "1d")
+        if len(closes) >= 2:
+            return round((closes[-1] / closes[-2] - 1) * 100, 2)
+    except:
+        pass
+    return None
 
-def get_h4_trend():
-    df = _fetch(TICKERS["audjpy"], "60d", "1h")
-    df_4h = df.resample("4h").agg({"Open":"first","High":"max","Low":"min","Close":"last","Volume":"sum"}).dropna()
-    return _classify_trend(_add_ema(df_4h))
+def run_full_analysis():
+    daily_closes = fetch_price("AUDJPY=X", "4mo", "1d")
+    daily = classify_trend(daily_closes)
 
-def get_market_data():
-    result = {}
-    pairs = [
-        ("wti", TICKERS["wti"]),
-        ("sp500", TICKERS["sp500"]),
-        ("gold", TICKERS["gold"]),
-        ("bhp", TICKERS["bhp"]),
-        ("usdjpy", TICKERS["usdjpy"]),
-    ]
-    for label, ticker in pairs:
-        try:
-            df = _fetch(ticker, "5d", "1d")
-            if len(df) >= 2:
-                close = df["Close"].squeeze()
-                change_pct = float((close.iloc[-1] / close.iloc[-2] - 1) * 100)
-                result[label] = {"price": round(float(close.iloc[-1]), 3), "change_pct": round(change_pct, 2)}
-            else:
-                result[label] = None
-        except Exception:
-            result[label] = None
+    h1_closes = fetch_price("AUDJPY=X", "60d", "1h")
+    h4_closes = [h1_closes[i] for i in range(0, len(h1_closes), 4)]
+    h4 = classify_trend(h4_closes)
 
-    for label, ticker in [("au_bond", TICKERS["au_bond"]), ("jp_bond", TICKERS["jp_bond"])]:
-        try:
-            df = _fetch(ticker, "5d", "1d")
-            if len(df) >= 1:
-                close = df["Close"].squeeze()
-                result[label] = round(float(close.iloc[-1]), 3)
-            else:
-                result[label] = None
-        except Exception:
-            result[label] = None
+    sp500 = get_change_pct("%5EGSPC")
+    wti = get_change_pct("CL%3DF")
+    usdjpy_closes = fetch_price("JPY%3DX", "5d", "1d")
+    usdjpy = round(usdjpy_closes[-1], 3) if usdjpy_closes else None
 
-    if result.get("au_bond") and result.get("jp_bond"):
-        result["rate_diff"] = round(result["au_bond"] - result["jp_bond"], 3)
-    else:
-        result["rate_diff"] = None
-
-    return result
-
-def simple_risk_sentiment(market):
-    sp500 = market.get("sp500")
-    wti = market.get("wti")
-    gold = market.get("gold")
-    if not sp500 or not wti:
-        return "不明"
     score = 0
-    score += 1 if sp500["change_pct"] > 0 else -1
-    score += 1 if wti["change_pct"] > 0 else -1
-    if gold:
-        score += -1 if gold["change_pct"] > 0.5 else 1 if gold["change_pct"] < -0.5 else 0
-    if score >= 2:
-        return "リスクオン"
-    elif score <= -2:
-        return "リスクオフ"
-    return "中立"
+    if sp500: score += 1 if sp500 > 0 else -1
+    if wti: score += 1 if wti > 0 else -1
+    risk = "リスクオン" if score >= 1 else "リスクオフ" if score <= -1 else "中立"
 
-def generate_ai_analysis(daily, h4, market, risk_sentiment):
-    sp500_str = f"{market['sp500']['price']}({market['sp500']['change_pct']:+}%)" if market.get("sp500") else "取得不可"
-    wti_str = f"{market['wti']['price']}({market['wti']['change_pct']:+}%)" if market.get("wti") else "取得不可"
-    gold_str = f"{market['gold']['price']}({market['gold']['change_pct']:+}%)" if market.get("gold") else "取得不可"
-    bhp_str = f"{market['bhp']['price']}({market['bhp']['change_pct']:+}%)" if market.get("bhp") else "取得不可"
-    usdjpy_str = f"{market['usdjpy']['price']}({market['usdjpy']['change_pct']:+}%)" if market.get("usdjpy") else "取得不可"
-    rate_diff_str = f"{market['rate_diff']}%" if market.get("rate_diff") else "取得不可"
+    prompt = f"""AUD/JPYの地合いを分析してください。
 
-    prompt = f"""あなたはAUD/JPY専門のFXアナリストです。
-以下のテクニカル・マーケットデータと、あなたの知識ベース(RBA・日銀の最新スタンス、中国経済動向、直近の重要指標)を組み合わせて、総合的な地合い分析を行ってください。
-
-【テクニカル】
-日足: 方向={daily["direction"]} 価格={daily["price"]} EMA20={daily["ema_fast"]} EMA50={daily["ema_slow"]}
-4時間足: 方向={h4["direction"]} 価格={h4["price"]} EMA20={h4["ema_fast"]} EMA50={h4["ema_slow"]}
-
-【マーケットデータ(前日比)】
-S&P500: {sp500_str}
-WTI原油: {wti_str}
-金(ゴールド): {gold_str}
-BHP(鉄鉱石代替): {bhp_str}
-USD/JPY: {usdjpy_str}
-豪日金利差: {rate_diff_str}
-リスク判定: {risk_sentiment}
-
-【ファンダメンタル】
-あなたの知識ベースから、以下を考慮してください:
-- RBAの現在の金融政策スタンスと次回会合の見通し
-- 日銀の現在のスタンスと円の方向性
-- 中国経済の動向(AUDへの影響)
-- 直近で重要だった経済指標の結果
+【日足】方向:{daily["direction"]} 価格:{daily["price"]} EMA20:{daily["ema20"]} EMA50:{daily["ema50"]}
+【4時間足】方向:{h4["direction"]} 価格:{h4["price"]} EMA20:{h4["ema20"]} EMA50:{h4["ema50"]}
+【相関資産】S&P500:{sp500}% WTI:{wti}% USD/JPY:{usdjpy} リスク:{risk}
+【ファンダ】RBA・日銀・中国経済の動向も踏まえて分析してください。
 
 以下フォーマットで出力(前置き不要):
 推奨目線: 順張り売り / 順張り買い / レンジ想定 / 様子見 のいずれか
 リスク判定: リスクオン / リスクオフ / 中立 のいずれか
 テクニカル: (1文)
-ファンダ: (RBA・日銀・中国を踏まえた1文)
-総合判断: (2文以内、今日注目すべきポイント)
+ファンダ: (1文)
+総合判断: (2文以内)
 注意点: (1文)"""
 
     response = client.messages.create(
         model="claude-sonnet-4-6", max_tokens=600,
         messages=[{"role": "user", "content": prompt}])
-    return response.content[0].text
+    ai_text = response.content[0].text
 
-def run_full_analysis():
-    daily = get_daily_trend()
-    h4 = get_h4_trend()
-    market = get_market_data()
-    risk_sentiment = simple_risk_sentiment(market)
-    ai_text = generate_ai_analysis(daily, h4, market, risk_sentiment)
     return {
         "timestamp": datetime.now().isoformat(),
         "daily": daily,
         "h4": h4,
-        "market": market,
-        "risk_sentiment": risk_sentiment,
+        "sp500_change": sp500,
+        "wti_change": wti,
+        "usdjpy": usdjpy,
+        "risk_sentiment": risk,
         "ai_analysis": ai_text,
     }
 
