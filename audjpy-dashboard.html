@@ -598,40 +598,7 @@ function buildIndicators(){
 }
 buildIndicators();
 
-// ========== AI SUMMARY ==========
-async function buildAISummary(){
-  const el = document.getElementById('ai-summary');
-  const today = new Date().toLocaleDateString('ja-JP');
 
-  // Build context from indicators
-  const context = `今日は${today}。豪ドル円スキャルピングトレーダー向けに、本日の注目点を3〜4文で要約してください。豪州CPI、米PCEデフレーター、米GDPが本日発表予定。重要用語は<span class="term">用語名<span class="tooltip">解説</span></span>の形式でHTMLを含めてください（CPI、RBA、リスクオフ、スキャルピングなど）。日本語で、スキャルパー目線で実践的に。`;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:400,
-        system:'あなたは豪ドル円専門のFXアナリストです。スキャルピングトレーダー向けに簡潔・実践的に解説します。HTMLタグを使って用語にtooltipを付けてください。',
-        messages:[{role:'user',content:context}]
-      })
-    });
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '取得できませんでした。';
-    el.innerHTML = text;
-    // Re-attach tooltip listeners
-    el.querySelectorAll('.term').forEach(t=>{
-      t.addEventListener('click',e=>{e.stopPropagation();t.classList.toggle('open');});
-    });
-  } catch(e) {
-    el.innerHTML = `本日は<span class="term">豪州CPI<span class="tooltip">消費者物価指数。物価の上昇率を示す。RBAの政策判断に直結する重要指標。</span></span>と米<span class="term">PCEデフレーター<span class="tooltip">FRBが最重視するインフレ指標。数値次第でドル相場が大きく動く。</span></span>・米GDPが発表予定。<span class="term">高インパクト指標<span class="tooltip">発表後に相場が急変動しやすい経済指標。スキャルピングでは指標前後の30分は特に注意が必要。</span></span>が重なる日は指標前後のエントリーを控えることを推奨します。`;
-    el.querySelectorAll('.term').forEach(t=>{
-      t.addEventListener('click',e=>{e.stopPropagation();t.classList.toggle('open');});
-    });
-  }
-}
-buildAISummary();
 
 // ========== TRADE RECORD ==========
 function saveTrades(){ localStorage.setItem('trades', JSON.stringify(trades)); }
