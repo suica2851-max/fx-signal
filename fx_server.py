@@ -32,27 +32,24 @@ def get_audjpy():
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/api/market-analysis":
-            try:
-                result = run_full_analysis()
-                body = json.dumps(result, ensure_ascii=False).encode()
-            except Exception as e:
-                body = json.dumps({"error": str(e)}).encode()
+        if self.path == "/api":
+            body = json.dumps(get_audjpy()).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(body)
             return
-        body = json.dumps(get_audjpy()).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, fmt, *args):
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] {args[0]} {args[1]}")
+        try:
+            with open("audjpy-dashboard.html", "rb") as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(body)
+        except:
+            self.send_response(404)
+            self.end_headers()
 
 if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", 8765))
