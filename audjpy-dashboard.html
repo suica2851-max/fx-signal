@@ -358,15 +358,9 @@ body::before{content:'';position:fixed;inset:0;background:
 <script>
 // ========== STATE ==========
 let prices = [];
-let dayHigh = null, dayLow = null;
-let prevDayHigh = null, prevDayLow = null;
 let logs = [];
-let lastSigTime = 0;
 let fetchCount = 0;
 let trades = JSON.parse(localStorage.getItem('trades') || '[]');
-
-const SL = 0.05, TP = 0.15;
-const TREND_TH = 0.08, RANGE_TH = 0.20;
 
 function fmt(n){ return n ? n.toFixed(3) : '--'; }
 function pip(a,b){ return Math.round((a-b)*100); }
@@ -512,50 +506,26 @@ function renderTrades(){
 }
 renderTrades();
 
-// ========== ANALYSIS ==========
-function getTrend(){
-  if(prices.length<6) return 'unknown';
-  const sl = prices.slice(-14);
-  const diff = sl[sl.length-1].price - sl[0].price;
-  if(diff < -TREND_TH) return 'down';
-  if(diff >  TREND_TH) return 'up';
-  return 'flat';
-}
-
-function getMarket(){
-  if(prices.length<8) return 'unknown';
-  const sl = prices.slice(-20);
-  const hi = Math.max(...sl.map(p=>p.price));
-  const lo = Math.min(...sl.map(p=>p.price));
-  const t = getTrend();
-  if(t!=='flat' && (hi-lo)>RANGE_TH) return 'trend';
-  if((hi-lo)<=RANGE_TH) return 'range';
-  return 'trend';
-}
-
-function getRangeHL(){
-  if(prices.length<8) return {hi:null,lo:null};
-  const sl = prices.slice(-20);
-  return {hi:Math.max(...sl.map(p=>p.price)),lo:Math.min(...sl.map(p=>p.price))};
-}
-
-function isSession(){
-  const h = new Date().getHours();
-  return (h>=8&&h<11)||(h>=15&&h<18);
-}
-
-// ========== UI UPDATE ==========
-function setCond(id,ok,lbl){
-  const el = document.getElementById(id);
-  el.textContent = ok?'OK':'NG';
-  el.className = 'badge '+(ok?'ok':'ng');
-}
-
-function updateUI(price, prev, data){
-  if(!data) data={};
+function updateUI(price, prev){
   const ch = price - prev;
   const p = Math.round(ch*100);
   const dir = p>0?'up':p<0?'down':'flat';
+
+  const hp = document.getElementById('h-price');
+  hp.textContent = fmt(price);
+  hp.className = 'header-price '+dir;
+
+  const bp = document.getElementById('price-big');
+  bp.textContent = fmt(price);
+  bp.className = 'price-big '+dir;
+
+  const chEl = document.getElementById('p-change');
+  chEl.textContent = (p>=0?'+':'')+p+'p';
+  chEl.style.color = p>0?'var(--green)':p<0?'var(--red)':'var(--text)';
+  document.getElementById('p-update').textContent = nowStr();
+
+  if(fetchCount%5===0) addLog(`更新 ${fmt(price)} (${p>=0?'+':''}${p}p)`);
+}
 
   // Header
   const hp = document.getElementById('h-price');
@@ -730,25 +700,13 @@ async function fetchPrice(){
     const prev = prices.length>0 ? prices[prices.length-1].price : price;
     prices.push({time:Date.now(),price});
     if(prices.length>200) prices.shift();
-    if(data.high>0) dayHigh=data.high;
-    if(data.low>0)  dayLow=data.low;
-    if(dayHigh===null||price>dayHigh){prevDayHigh=dayHigh;dayHigh=price;}
-    if(dayLow===null||price<dayLow){prevDayLow=dayLow;dayLow=price;}
-    if(data.closes&&data.closes.length>1&&prices.length<5){
-      const now=Date.now();
-      data.closes.slice(0,-1).forEach((c,i)=>{
-        prices.unshift({time:now-(data.closes.length-i)*60000,price:c});
-      });
-      if(prices.length>200) prices.splice(200);
-    }
     fetchCount++;
-    updateUI(price, prev, data);
+    updateUI(price, prev);
   } catch(e){
     addLog('サーバー未起動? '+e.message,'w');
     document.getElementById('price-big').textContent='サーバー起動待ち';
   }
 }
-
 addLog('ダッシュボード起動');
 fetchPrice();
 setInterval(fetchPrice, 10000);
