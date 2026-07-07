@@ -234,6 +234,16 @@ body::before{content:'';position:fixed;inset:0;background:
 }
 .news-tag{font-size:9px;letter-spacing:0.15em;color:var(--purple);margin-bottom:8px;}
 .news-text{font-size:12px;line-height:1.9;color:var(--text);}
+  .corr-item{
+  background:var(--panel2);border:1px solid var(--border);
+  border-radius:8px;padding:12px;margin-bottom:8px;
+}
+.corr-name{font-size:11px;color:var(--dim2);letter-spacing:0.05em;margin-bottom:4px;}
+.corr-price{font-family:var(--font-display);font-size:22px;letter-spacing:0.02em;}
+.corr-chg{font-size:12px;font-family:var(--font-mono);margin-left:8px;}
+.corr-chg.up{color:var(--green);}
+.corr-chg.down{color:var(--red);}
+.corr-note{font-size:10px;color:var(--dim);margin-top:4px;line-height:1.5;}
 
 /* Log */
 .log-wrap{max-height:120px;overflow-y:auto;}
@@ -365,17 +375,9 @@ body::before{content:'';position:fixed;inset:0;background:
 
   <!-- ===== RIGHT: INDICATORS ===== -->
  <div class="col" data-col="2" style="display:block">
-    <div style="margin-top:4px;">
-      
-      <div class="sec-title">// AI マーケット要約</div>
-      <div class="news-summary">
-        <div class="news-tag">// TODAY'S BRIEF</div>
-        <div class="news-text" id="ai-summary">読込中...</div>
-      </div>
-      <div style="font-size:9px;color:var(--dim);text-align:center;margin-top:-4px;margin-bottom:10px;">※ 用語をタップすると解説が表示されます</div>
-    </div>
+    <div class="sec-title">// 相関資産ウォッチ</div>
+    <div id="correlated-list"></div>
   </div>
-
 </div><!-- /layout -->
 
 <script>
@@ -488,7 +490,33 @@ function buildReports(){
   `).join('');
 }
 buildReports();
-
+async function buildCorrelated(){
+  const el = document.getElementById('correlated-list');
+  try {
+    const res = await fetch('/api/correlated-assets');
+    const data = await res.json();
+    const items = [
+      {key:'sp500', label:'S&P500', note:'株高→リスクオン(豪ドル買い)、株安→リスクオフ(円買い)'},
+      {key:'wti', label:'WTI原油', note:'資源国通貨の地合いを反映。原油高は豪ドルに追い風'},
+      {key:'usdjpy', label:'USD/JPY', note:'円側の強弱。ドル円上昇は AUD/JPY の押し上げ要因'},
+    ];
+    el.innerHTML = items.map(it=>{
+      const d = data[it.key];
+      if(!d || !d.ok) return `<div class="corr-item"><div class="corr-name">${it.label}</div><div style="font-size:11px;color:var(--dim);">取得失敗</div></div>`;
+      const dir = d.change_pct > 0 ? 'up' : d.change_pct < 0 ? 'down' : '';
+      const sign = d.change_pct >= 0 ? '+' : '';
+      return `<div class="corr-item">
+        <div class="corr-name">${it.label}</div>
+        <span class="corr-price">${d.price}</span><span class="corr-chg ${dir}">${sign}${d.change_pct}%</span>
+        <div class="corr-note">${it.note}</div>
+      </div>`;
+    }).join('');
+  } catch(e){
+    el.innerHTML = '<div style="font-size:11px;color:var(--dim2);">相関資産データ取得失敗</div>';
+  }
+}
+buildCorrelated();
+setInterval(buildCorrelated, 60000);
 // ========== INDICATORS ==========
 
 // ========== TRADE RECORD ==========
