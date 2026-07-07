@@ -144,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(body)
-            return    
+            return
         if self.path == "/api":
             body = json.dumps(get_audjpy()).encode()
             self.send_response(200)
