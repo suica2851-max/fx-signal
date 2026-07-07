@@ -414,11 +414,9 @@ body::before{content:'';position:fixed;inset:0;background:
   </div>
 
   <!-- ===== RIGHT: INDICATORS ===== -->
-  <div class="col" data-col="2" style="display:block">
-    <div class="sec-title">// 今日の経済指標（AUD/JPY関連）</div>
-    <div id="indicator-list"></div>
-
+ <div class="col" data-col="2" style="display:block">
     <div style="margin-top:4px;">
+      
       <div class="sec-title">// AI マーケット要約</div>
       <div class="news-summary">
         <div class="news-tag">// TODAY'S BRIEF</div>
@@ -548,36 +546,6 @@ function buildReports(){
 buildReports();
 
 // ========== INDICATORS ==========
-async function buildIndicators(){
-  const el = document.getElementById('indicator-list');
-  try {
-    const res = await fetch('/api/economic-calendar');
-    const data = await res.json();
-    if(!data.ok || !data.items.length){
-      el.innerHTML = '<div style="font-size:11px;color:var(--dim2);">本日は主要指標の発表予定なし</div>';
-      return;
-    }
-    const flagMap = {AUD:'🇦🇺 豪州', JPY:'🇯🇵 日本', USD:'🇺🇸 米国', CNY:'🇨🇳 中国'};
-    const impactMap = {High:'high', Medium:'mid', Low:'low'};
-    const impactLbl = {High:'高インパクト', Medium:'中インパクト', Low:'低インパクト'};
-    el.innerHTML = data.items.map(ind => {
-      const cls = impactMap[ind.impact] || 'low';
-      const dirTag = ind.direction==='up' ? '<span style="color:var(--green)">▲AUD/JPY</span>'
-                   : ind.direction==='down' ? '<span style="color:var(--red)">▼AUD/JPY</span>' : '';
-      return `<div class="indicator-item">
-        <div class="ind-time">${ind.time} ${dirTag}</div>
-        <div class="ind-name">${flagMap[ind.country]||ind.country} ${ind.title}</div>
-        <div><span class="ind-impact ${cls}">${impactLbl[ind.impact]||'低インパクト'}</span></div>
-        <div class="ind-summary">${ind.summary}</div>
-      </div>`;
-    }).join('');
-  } catch(e){
-    el.innerHTML = '<div style="font-size:11px;color:var(--dim2);">指標データ取得失敗</div>';
-  }
-}
-buildIndicators();
-setInterval(buildIndicators, 600000);
-
 
 // ========== TRADE RECORD ==========
 function saveTrades(){ localStorage.setItem('trades', JSON.stringify(trades)); }
