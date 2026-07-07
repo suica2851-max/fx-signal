@@ -293,11 +293,7 @@ body::before{content:'';position:fixed;inset:0;background:
   <!-- ===== CENTER: SIGNAL + RECORD ===== -->
   <div class="col-center" data-col="1" style="display:block">
 
-    <!-- Mode bar -->
-    <div class="mode-bar unknown" id="mode-bar">
-      <span id="mode-text">— 相場判定中 —</span>
-      <span class="mode-sub" id="mode-sub"></span>
-    </div>
+   
 
     <!-- Price -->
     <div class="card" style="margin-bottom:10px;">
@@ -313,78 +309,9 @@ body::before{content:'';position:fixed;inset:0;background:
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-item">
-        <div class="stat-lbl">本日高値</div>
-        <div class="stat-val" id="s-high" style="color:var(--green)">--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-lbl">本日安値</div>
-        <div class="stat-val" id="s-low" style="color:var(--red)">--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-lbl">15分足トレンド</div>
-        <div class="stat-val" id="s-trend15" style="color:var(--dim2)">--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-lbl">5分足トレンド</div>
-        <div class="stat-val" id="s-trend5" style="color:var(--dim2)">--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-lbl">RSI (5分足)</div>
-        <div class="stat-val" id="s-rsi" style="color:var(--dim2)">--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-lbl">ボリンジャーバンド</div>
-        <div class="stat-val" id="s-bb" style="color:var(--dim2)">--</div>
-      </div>
-    </div>
-
-    <!-- Conditions -->
-    <div class="card" style="margin-bottom:10px;">
-      <div class="sec-title">// エントリー条件</div>
-      <div class="cond-row"><span class="cond-lbl" id="c1-lbl">15分足トレンド方向</span><span class="badge ng" id="c1">NG</span></div>
-      <div class="cond-row"><span class="cond-lbl" id="c2-lbl">RSI（売買過熱）</span><span class="badge ng" id="c2">NG</span></div>
-      <div class="cond-row"><span class="cond-lbl" id="c3-lbl">ボリンジャーバンド</span><span class="badge ng" id="c3">NG</span></div>
-      <div class="cond-row"><span class="cond-lbl">時間帯</span><span class="badge ng" id="c4">NG</span></div>
-    </div>
-
-    <!-- Range bar (range mode only) -->
-    <div class="card range-wrap" id="range-card" style="display:none;margin-bottom:10px;">
-      <div class="sec-title">// レンジ内ポジション</div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;">
-        <span style="color:var(--red)">上限 <span id="r-hi">--</span></span>
-        <span style="color:var(--green)">下限 <span id="r-lo">--</span></span>
-      </div>
-      <div class="range-bar">
-        <div style="position:absolute;inset:0;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));opacity:0.25;"></div>
-        <div class="range-ptr" id="r-ptr" style="background:var(--cyan);left:50%;"></div>
-      </div>
-      <div class="range-labels"><span>買いゾーン</span><span>中立</span><span>売りゾーン</span></div>
-    </div>
-
-    <!-- Signal -->
-    <div class="signal-box standby" id="sig-box">
-      <div class="signal-tag" id="sig-tag">// SIGNAL</div>
-      <div class="signal-main" id="sig-main" style="color:var(--dim2)">STANDBY</div>
-      <div class="signal-sub" id="sig-sub">条件成立待ち</div>
-    </div>
-
-    <!-- Levels -->
-    <div class="levels-row" id="lvl-row" style="display:none;">
-      <div class="level-card">
-        <div class="level-lbl">エントリー</div>
-        <div class="level-val" id="lv-e" style="color:var(--cyan)">--</div>
-      </div>
-      <div class="level-card">
-        <div class="level-lbl">損切り -5p</div>
-        <div class="level-val" id="lv-s" style="color:var(--red)">--</div>
-      </div>
-      <div class="level-card">
-        <div class="level-lbl">利確 +15p</div>
-        <div class="level-val" id="lv-t" style="color:var(--green)">--</div>
-      </div>
+ <!-- Chart -->
+    <div class="card" style="margin-bottom:10px;padding:0;overflow:hidden;">
+      <div id="tv_chart" style="height:420px;"></div>
     </div>
 
     <!-- Trade Record -->
@@ -848,5 +775,27 @@ setInterval(fetchMarketAnalysis, 300000);
   <div id="ai-analysis" style="font-size:13px;line-height:1.8;white-space:pre-wrap;">分析中...</div>
   <div id="ai-timestamp" style="font-size:11px;color:#8b92a0;margin-top:8px;"></div>
 </div>  
+  <script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+new TradingView.widget({
+  autosize: true,
+  symbol: "FX:AUDJPY",
+  interval: "60",
+  timezone: "Asia/Tokyo",
+  theme: "dark",
+  style: "1",
+  locale: "ja",
+  toolbar_bg: "#0a0a10",
+  enable_publishing: false,
+  hide_top_toolbar: false,
+  hide_legend: false,
+  save_image: false,
+  studies: [
+    {id:"MAExp@tv-basicstudies", inputs:{length:20}},
+    {id:"MAExp@tv-basicstudies", inputs:{length:50}}
+  ],
+  container_id: "tv_chart"
+});
+</script>
 </body>
 </html>
