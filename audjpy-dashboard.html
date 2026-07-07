@@ -166,6 +166,16 @@ body::before{content:'';position:fixed;inset:0;background:
 .range-bar{position:relative;height:6px;background:var(--border2);border-radius:3px;margin:8px 0;}
 .range-ptr{position:absolute;top:-5px;width:16px;height:16px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--bg);transition:left 0.5s,background 0.3s;}
 .range-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);}
+  .range-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);}
+
+.tf-btn,.ind-btn{
+  padding:6px 12px;border:1px solid var(--border2);border-radius:6px;
+  background:var(--panel2);color:var(--dim2);font-family:var(--font-jp);
+  font-size:11px;cursor:pointer;transition:all 0.15s;
+}
+.tf-btn:hover,.ind-btn:hover{border-color:var(--cyan);color:var(--text);}
+.tf-btn.active{background:rgba(0,229,255,0.12);border-color:var(--cyan);color:var(--cyan);}
+.ind-btn.active{background:rgba(0,255,136,0.1);border-color:var(--green);color:var(--green);}
 
 /* ===== TRADE LOG ===== */
 .trade-form{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
@@ -309,8 +319,21 @@ body::before{content:'';position:fixed;inset:0;background:
       </div>
     </div>
 
- <!-- Chart -->
-    <div class="card" style="margin-bottom:10px;padding:0;overflow:hidden;">
+<!-- Chart -->
+    <div class="card" style="margin-bottom:10px;padding:10px;overflow:hidden;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="tf-btn" data-tf="5">5分</button>
+        <button class="tf-btn" data-tf="60">1時間</button>
+        <button class="tf-btn" data-tf="240">4時間</button>
+        <button class="tf-btn" data-tf="D">日足</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <button class="ind-btn" data-ind="ema9">EMA9</button>
+        <button class="ind-btn" data-ind="ema20">EMA20</button>
+        <button class="ind-btn" data-ind="ema50">EMA50</button>
+        <button class="ind-btn" data-ind="adx">ADX</button>
+        <button class="ind-btn" data-ind="macd">MACD</button>
+      </div>
       <div id="tv_chart" style="height:420px;"></div>
     </div>
 
@@ -570,27 +593,68 @@ setInterval(fetchMarketAnalysis, 300000);
   <div id="ai-analysis" style="font-size:13px;line-height:1.8;white-space:pre-wrap;">分析中...</div>
   <div id="ai-timestamp" style="font-size:11px;color:#8b92a0;margin-top:8px;"></div>
 </div>  
-  <script src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://s3.tradingview.com/tv.js"></script>
 <script>
-new TradingView.widget({
-  autosize: true,
-  symbol: "FX:AUDJPY",
-  interval: "60",
-  timezone: "Asia/Tokyo",
-  theme: "dark",
-  style: "1",
-  locale: "ja",
-  toolbar_bg: "#0a0a10",
-  enable_publishing: false,
-  hide_top_toolbar: false,
-  hide_legend: false,
-  save_image: false,
-  studies: [
-    {id:"MAExp@tv-basicstudies", inputs:{length:20}},
-    {id:"MAExp@tv-basicstudies", inputs:{length:50}}
-  ],
-  container_id: "tv_chart"
-});
+const STUDY_MAP = {
+  ema9:  {id:"MAExp@tv-basicstudies", inputs:{length:9}},
+  ema20: {id:"MAExp@tv-basicstudies", inputs:{length:20}},
+  ema50: {id:"MAExp@tv-basicstudies", inputs:{length:50}},
+  adx:   {id:"ADX@tv-basicstudies", inputs:{}},
+  macd:  {id:"MACD@tv-basicstudies", inputs:{}}
+};
+
+let chartTf = localStorage.getItem('chart_tf') || '60';
+let chartInds = JSON.parse(localStorage.getItem('chart_inds') || '["ema20","ema50"]');
+
+function renderChart(){
+  document.getElementById('tv_chart').innerHTML = '';
+  new TradingView.widget({
+    autosize: true,
+    symbol: "FX:AUDJPY",
+    interval: chartTf,
+    timezone: "Asia/Tokyo",
+    theme: "dark",
+    style: "1",
+    locale: "ja",
+    toolbar_bg: "#0a0a10",
+    enable_publishing: false,
+    hide_top_toolbar: false,
+    hide_legend: false,
+    save_image: false,
+    studies: chartInds.map(k => STUDY_MAP[k]),
+    container_id: "tv_chart"
+  });
+}
+
+function initChartControls(){
+  document.querySelectorAll('.tf-btn').forEach(btn=>{
+    if(btn.dataset.tf === chartTf) btn.classList.add('active');
+    btn.addEventListener('click', ()=>{
+      chartTf = btn.dataset.tf;
+      localStorage.setItem('chart_tf', chartTf);
+      document.querySelectorAll('.tf-btn').forEach(b=>b.classList.toggle('active', b===btn));
+      renderChart();
+    });
+  });
+  document.querySelectorAll('.ind-btn').forEach(btn=>{
+    if(chartInds.includes(btn.dataset.ind)) btn.classList.add('active');
+    btn.addEventListener('click', ()=>{
+      const k = btn.dataset.ind;
+      if(chartInds.includes(k)){
+        chartInds = chartInds.filter(x=>x!==k);
+        btn.classList.remove('active');
+      } else {
+        chartInds.push(k);
+        btn.classList.add('active');
+      }
+      localStorage.setItem('chart_inds', JSON.stringify(chartInds));
+      renderChart();
+    });
+  });
+}
+
+initChartControls();
+renderChart();
 </script>
 </body>
 </html>
