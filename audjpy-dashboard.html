@@ -542,62 +542,35 @@ function buildReports(){
 buildReports();
 
 // ========== INDICATORS ==========
-function buildIndicators(){
-  const h = new Date().getHours();
-  const indicators = [
-    {
-      time:'08:50',country:'🇯🇵 日本',name:'企業向けサービス価格指数',
-      impact:'mid',
-      summary:'企業間で取引されるサービスの価格変動を示す指標。数値が高いと<span class="term">インフレ<span class="tooltip">物価が持続的に上昇する経済現象。インフレが進むと中央銀行は利上げを検討するため、円高要因になりやすい。</span></span>圧力を示し、日銀の利上げ期待につながることで円高・豪ドル円下落の可能性。',
-    },
-    {
-      time:'10:30',country:'🇦🇺 豪州',name:'豪州 四半期CPI（消費者物価指数）',
-      impact:'high',
-      summary:'物価上昇率を示す重要指標。予想より高い場合は<span class="term">RBA<span class="tooltip">オーストラリア準備銀行（Reserve Bank of Australia）。豪州の中央銀行で政策金利を決定する機関。利上げ → 豪ドル高、利下げ → 豪ドル安の影響がある。</span></span>の利上げ期待が高まり豪ドル高→豪ドル円上昇。予想より低い場合は逆。今日最大の注目指標。',
-    },
-    {
-      time:'21:30',country:'🇺🇸 米国',name:'PCEデフレーター（米国インフレ指標）',
-      impact:'high',
-      summary:'FRBが最重視するインフレ指標。数値が高い場合は<span class="term">リスクオフ<span class="tooltip">投資家がリスク回避に動く状態。株価下落・円買いが起きやすく、豪ドル円は下落しやすい。反対にリスクオンでは豪ドル円が上昇しやすい。</span></span>の円高になりやすく豪ドル円の下落圧力になる可能性。',
-    },
-    {
-      time:'21:30',country:'🇺🇸 米国',name:'米GDP（速報値）',
-      impact:'high',
-      summary:'米国の経済成長率。予想を上回れば<span class="term">ドル高<span class="tooltip">米ドルの価値が他通貨に対して上昇すること。ドル高は一般的に豪ドル安・円安の両方を引き起こすが、リスク環境により豪ドル円への影響は変わる。</span></span>→豪ドル円は方向感が出にくい。下振れなら景気後退懸念でリスクオフの円高になりやすい。',
-    },
-  ];
-
-  const now = new Date();
-  const nowMin = now.getHours()*60 + now.getMinutes();
-
+async function buildIndicators(){
   const el = document.getElementById('indicator-list');
-  el.innerHTML = indicators.map(ind => {
-    const [ih,im] = ind.time.split(':').map(Number);
-    const indMin = ih*60+im;
-    const isPast = indMin < nowMin;
-    const isSoon = !isPast && (indMin - nowMin) <= 60;
-    return `
-    <div class="indicator-item" style="${isPast?'opacity:0.45':''}${isSoon?';border-color:rgba(255,214,10,0.4)':''}">
-      <div class="ind-time">${ind.time} ${isSoon?'<span style="color:var(--yellow)">▶ まもなく</span>':isPast?'<span style="color:var(--dim)">終了</span>':''}</div>
-      <div class="ind-name">${ind.country} ${ind.name}</div>
-      <div><span class="ind-impact ${ind.impact}">${ind.impact==='high'?'高インパクト':ind.impact==='mid'?'中インパクト':'低インパクト'}</span></div>
-      <div class="ind-summary">${ind.summary}</div>
-    </div>`;
-  }).join('');
-
-  // Tooltip toggle for mobile
-  document.querySelectorAll('.term').forEach(el=>{
-    el.addEventListener('click',e=>{
-      e.stopPropagation();
-      el.classList.toggle('open');
-    });
-  });
-  document.addEventListener('click',()=>{
-    document.querySelectorAll('.term.open').forEach(el=>el.classList.remove('open'));
-  });
+  try {
+    const res = await fetch('/api/economic-calendar');
+    const data = await res.json();
+    if(!data.ok || !data.items.length){
+      el.innerHTML = '<div style="font-size:11px;color:var(--dim2);">本日は主要指標の発表予定なし</div>';
+      return;
+    }
+    const flagMap = {AUD:'🇦🇺 豪州', JPY:'🇯🇵 日本', USD:'🇺🇸 米国', CNY:'🇨🇳 中国'};
+    const impactMap = {High:'high', Medium:'mid', Low:'low'};
+    const impactLbl = {High:'高インパクト', Medium:'中インパクト', Low:'低インパクト'};
+    el.innerHTML = data.items.map(ind => {
+      const cls = impactMap[ind.impact] || 'low';
+      const dirTag = ind.direction==='up' ? '<span style="color:var(--green)">▲AUD/JPY</span>'
+                   : ind.direction==='down' ? '<span style="color:var(--red)">▼AUD/JPY</span>' : '';
+      return `<div class="indicator-item">
+        <div class="ind-time">${ind.time} ${dirTag}</div>
+        <div class="ind-name">${flagMap[ind.country]||ind.country} ${ind.title}</div>
+        <div><span class="ind-impact ${cls}">${impactLbl[ind.impact]||'低インパクト'}</span></div>
+        <div class="ind-summary">${ind.summary}</div>
+      </div>`;
+    }).join('');
+  } catch(e){
+    el.innerHTML = '<div style="font-size:11px;color:var(--dim2);">指標データ取得失敗</div>';
+  }
 }
 buildIndicators();
-
+setInterval(buildIndicators, 600000);
 
 
 // ========== TRADE RECORD ==========
