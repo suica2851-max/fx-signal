@@ -107,6 +107,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path == "/api/economic-calendar":
+            body = json.dumps(fetch_economic_calendar(), ensure_ascii=False).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(body)
+            return    
         if self.path == "/api":
             body = json.dumps(get_audjpy()).encode()
             self.send_response(200)
