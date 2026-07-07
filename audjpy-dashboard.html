@@ -528,6 +528,12 @@ function buildReports(){
       url:`https://www.monex.co.jp/market/fx/`,
       desc:'日次レポート・為替見通し'
     },
+    {
+      src:'Bloomberg',
+      title:`為替マーケット総合`,
+      url:`https://www.bloomberg.co.jp/markets/currencies`,
+      desc:'主要通貨ペア・マーケット概況'
+    },
   ];
   const el = document.getElementById('report-links');
   el.innerHTML = sources.map(s=>`
