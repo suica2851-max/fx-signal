@@ -68,21 +68,6 @@ def fetch_economic_calendar():
     return result
 
 def get_audjpy():
-    def get_quote(symbol):
-    try:
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=5d"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            data = json.loads(r.read())
-        meta = data["chart"]["result"][0]["meta"]
-        price = meta.get("regularMarketPrice", 0)
-        prev = meta.get("previousClose") or meta.get("chartPreviousClose", 0)
-        chg = round((price / prev - 1) * 100, 2) if prev else 0
-        return {"price": round(price, 2), "change_pct": chg, "ok": True}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-def get_audjpy():
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/AUDJPY=X?interval=1m&range=1d"
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
