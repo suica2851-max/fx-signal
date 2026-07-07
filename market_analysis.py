@@ -76,11 +76,13 @@ def run_full_analysis():
 総合判断: (2文以内)
 注意点: (1文)"""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6", max_tokens=600,
-        messages=[{"role": "user", "content": prompt}])
-    ai_text = response.content[0].text
-
+   response = client.messages.create(
+        model="claude-sonnet-4-6", max_tokens=800,
+        tools=[{"type": "web_search_20250305", "name": "web_search"}],
+        messages=[{"role": "user", "content": prompt + "\n\n最新のRBA・日銀発言、地政学リスクはWeb検索で確認した上で反映してください。"}])
+    ai_text = "\n".join(
+        block.text for block in response.content if getattr(block, "type", None) == "text"
+    )
     return {
         "timestamp": datetime.now().isoformat(),
         "daily": daily,
