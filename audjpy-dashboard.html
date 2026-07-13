@@ -373,14 +373,31 @@ body::before{content:'';position:fixed;inset:0;background:
     </div>
   </div>
 
-  <!-- ===== RIGHT: INDICATORS ===== -->
+<!-- ===== RIGHT: INDICATORS ===== -->
  <div class="col" data-col="2" style="display:block">
     <div class="sec-title">// 相関資産ウォッチ</div>
     <div id="correlated-list"></div>
+
+    <div style="margin-top:14px;">
+      <div class="sec-title">// 通貨強弱チャート</div>
+      <div class="card" style="padding:8px;">
+        <iframe
+          src="https://www.oanda.jp/lab-education/oanda_lab/oanda_rab/currency_power_balance/"
+          style="width:100%;height:360px;border:none;border-radius:6px;background:#0a0a10;"
+          loading="lazy"
+          title="通貨強弱チャート">
+        </iframe>
+        <a href="https://www.oanda.jp/lab-education/oanda_lab/oanda_rab/currency_power_balance/"
+           target="_blank" rel="noopener"
+           style="display:block;margin-top:6px;font-size:10px;color:var(--dim2);text-align:right;">
+          元ページで開く →
+        </a>
+      </div>
+    </div>
   </div>
 </div><!-- /layout -->
-
 <script>
+  
 // ========== STATE ==========
 let prices = [];
 let logs = [];
